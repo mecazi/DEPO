@@ -1,0 +1,3 @@
+# deb2pisi
+Debian paketlerini Pisi Linux paket yapısına dönüştürme aracı.
+Lazarus (Free Pascal) ile geliştirilmiştir....
