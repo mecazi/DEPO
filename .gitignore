@@ -1,0 +1,9 @@
+deb2pisi
+deb2pisi.dbg
+lib/
+backup/
+*.o
+*.ppu
+*.compiled
+*.res
+*.lps
