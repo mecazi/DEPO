@@ -1,0 +1,248 @@
+object Form1: TForm1
+  Left = 372
+  Height = 701
+  Top = 137
+  Width = 1412
+  Caption = 'DEB2PİSİ'
+  ClientHeight = 701
+  ClientWidth = 1412
+  LCLVersion = '4.6.0.0'
+  OnCreate = FormCreate
+  object PageControl1: TPageControl
+    Left = 8
+    Height = 645
+    Top = 46
+    Width = 929
+    ActivePage = TabSheet1
+    TabIndex = 0
+    TabOrder = 0
+    object TabSheet1: TTabSheet
+      Caption = 'Paket Aç'
+      ClientHeight = 614
+      ClientWidth = 919
+      object Button1: TButton
+        Left = 32
+        Height = 25
+        Top = 15
+        Width = 133
+        Caption = 'Deb Paketi Aç'
+        TabOrder = 0
+        OnClick = Button1Click
+      end
+      object Button2: TButton
+        Left = 177
+        Height = 25
+        Top = 15
+        Width = 75
+        Caption = 'Dönüştür'
+        TabOrder = 1
+        Visible = False
+        OnClick = Button2Click
+      end
+      object Label1: TLabel
+        Left = 400
+        Height = 19
+        Top = 24
+        Width = 126
+        Caption = 'Paketin Bağımlılıkları'
+      end
+      object Edit1: TEdit
+        Left = 29
+        Height = 31
+        Top = 49
+        Width = 885
+        TabOrder = 2
+      end
+      object Label2: TLabel
+        Left = 32
+        Height = 40
+        Top = 96
+        Width = 876
+        Alignment = taCenter
+        AutoSize = False
+        Caption = 'Pisi paketine eklenecek bağımlılıklar. Bağımlılıklar hatalı hesaplanabilir. Gereksiz bağımlılıkları elle silebilirsiniz. Hataları düzeltebilirsiniz. Bağımlılıklar arasında boşluk olmasına dikkat ediniz.'
+        WordWrap = True
+      end
+      object Edit2: TEdit
+        Left = 0
+        Height = 31
+        Top = 144
+        Width = 27
+        TabOrder = 3
+        Visible = False
+      end
+      object Memo2: TMemo
+        Left = 31
+        Height = 367
+        Top = 232
+        Width = 881
+        Font.Height = -13
+        Font.Name = 'Monospace'
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 4
+      end
+      object Label3: TLabel
+        Left = 423
+        Height = 19
+        Top = 208
+        Width = 98
+        Caption = 'xml bağımlılıklar'
+      end
+      object Edit3: TEdit
+        Left = 31
+        Height = 31
+        Top = 144
+        Width = 844
+        TabOrder = 5
+        OnChange = Button2Click
+      end
+      object Button9: TButton
+        Left = 32
+        Height = 25
+        Top = 176
+        Width = 232
+        Caption = 'Pisi Bağ. Dönüştür'
+        TabOrder = 6
+        Visible = False
+        OnClick = Button9Click
+      end
+    end
+    object TabSheet2: TTabSheet
+      Caption = 'pspec.xml oluştur'
+      ClientHeight = 614
+      ClientWidth = 919
+      object Button3: TButton
+        Left = 16
+        Height = 25
+        Top = 15
+        Width = 167
+        Caption = 'pspec.xml oluştur'
+        TabOrder = 0
+        OnClick = Button3Click
+      end
+      object Memo3: TMemo
+        Left = 8
+        Height = 561
+        Top = 46
+        Width = 885
+        Font.Height = -13
+        Font.Name = 'Monospace'
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        OnChange = Memo3Change
+      end
+    end
+    object TabSheet3: TTabSheet
+      Caption = 'actions.py oluştur'
+      ClientHeight = 614
+      ClientWidth = 919
+      object Button5: TButton
+        Left = 15
+        Height = 25
+        Top = 15
+        Width = 146
+        Caption = 'actions.py oluştur'
+        TabOrder = 0
+        OnClick = Button5Click
+      end
+      object Memo5: TMemo
+        Left = 15
+        Height = 553
+        Top = 54
+        Width = 885
+        Font.Height = -13
+        Font.Name = 'Monospace'
+        ParentFont = False
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        OnChange = Memo5Change
+      end
+    end
+    object TabSheet4: TTabSheet
+      Caption = 'Betikler (package.py)'
+      ClientHeight = 614
+      ClientWidth = 919
+      object Button8: TButton
+        Left = 17
+        Height = 25
+        Top = 14
+        Width = 190
+        Caption = 'package.py oluştur'
+        TabOrder = 0
+        OnClick = Button8Click
+      end
+      object MemoBetikler: TMemo
+        Left = 15
+        Height = 515
+        Top = 46
+        Width = 893
+        ScrollBars = ssAutoBoth
+        TabOrder = 1
+        OnChange = MemoBetiklerChange
+      end
+    end
+  end
+  object Button4: TButton
+    Left = 960
+    Height = 40
+    Top = 21
+    Width = 96
+    Caption = 'Pisile'
+    TabOrder = 1
+    OnClick = Button4Click
+  end
+  object Panel1: TPanel
+    Left = 945
+    Height = 622
+    Top = 69
+    Width = 453
+    Caption = 'Panel1'
+    Color = clBlack
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 2
+  end
+  object Memo4: TMemo
+    Left = 960
+    Height = 599
+    Top = 84
+    Width = 392
+    Color = clBlack
+    Font.Color = clLime
+    ParentFont = False
+    ScrollBars = ssAutoBoth
+    TabOrder = 3
+  end
+  object Button6: TButton
+    Left = 1160
+    Height = 40
+    Top = 21
+    Width = 130
+    Caption = 'Paket Dizinini Aç'
+    TabOrder = 4
+    OnClick = Button6Click
+  end
+  object Button7: TButton
+    Left = 1064
+    Height = 40
+    Top = 21
+    Width = 88
+    Caption = 'Paketi Kur'
+    TabOrder = 5
+    OnClick = Button7Click
+  end
+  object Button10: TButton
+    Left = 1296
+    Height = 40
+    Top = 21
+    Width = 91
+    Caption = 'Temizle'
+    TabOrder = 6
+    OnClick = Button10Click
+  end
+  object OpenDialog1: TOpenDialog
+    Left = 860
+  end
+end
