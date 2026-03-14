@@ -1,13 +1,11 @@
-# Lazarus/FPC derleme artıkları
-*.o
-*.ppu
-*.compiled
-*.bak
-*.lrs
-*.res
-*.or
-
-# Klasörler
+# Lazarus/FPC gereksizleri
 lib/
 backup/
-/root/pisilik/* # Eğer proje bu klasörün içindeyse, geçici paketleme dosyalarını gönderme
+*.ppu
+*.o
+*.compiled
+*.lrs
+*.bak
+*.lps
+# Çalıştırılabilir dosyanın kendisi
+deb2pisi

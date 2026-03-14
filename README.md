@@ -7,7 +7,7 @@ Debian (.deb) paketlerini Pisi Linux (.pisi) formatına dönüştüren, akıllı
 - 🛠 **Lazarus & FPC:** Hızlı, hafif ve Pisi Linux üzerinde yerli geliştirme.
 - 🔄 **Bağımlılık Çevirisi:** Debian bağımlılıklarını Pisi karşılıklarına (glibc, libext2fs vb.) dönüştürür.
 
-GitHub'daki README.md dosyasına şu "Sistem Gereksinimleri" tablosunu eklemek profesyonel duracaktır:
+
 
 AraçPaket Adı           (Pisi Linux)                   Kullanım Amacı
 ar                        binutils                .deb paketlerini parçalamak

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls,
-  ExtCtrls, Unix, BaseUnix, process, FileUtil, StrUtils;
+  ExtCtrls, Unix, BaseUnix, process, FileUtil, StrUtils, LCLIntf;
 
 type
 
@@ -15,6 +15,8 @@ type
   TForm1 = class(TForm)
     Button1: TButton;
     Button10: TButton;
+    Button11: TButton;
+    Button15: TButton;
     Button2: TButton;
     Button3: TButton;
     Button4: TButton;
@@ -23,12 +25,14 @@ type
     Button7: TButton;
     Button8: TButton;
     Button9: TButton;
+    CheckBox1: TCheckBox;
     Edit1: TEdit;
     Edit2: TEdit;
     Edit3: TEdit;
     Label1: TLabel;
     Label2: TLabel;
     Label3: TLabel;
+    Label4: TLabel;
     MemoBetikler: TMemo;
     Memo2: TMemo;
     Memo3: TMemo;
@@ -41,8 +45,10 @@ type
     TabSheet2: TTabSheet;
     TabSheet3: TTabSheet;
     TabSheet4: TTabSheet;
+    ToggleBox1: TToggleBox;
     procedure Button10Click(Sender: TObject);
     procedure Button11Click(Sender: TObject);
+    procedure Button15Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -52,6 +58,7 @@ type
     procedure Button7Click(Sender: TObject);
     procedure Button8Click(Sender: TObject);
     procedure Button9Click(Sender: TObject);
+    procedure CheckBox1Change(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Memo3Change(Sender: TObject);
     procedure Memo5Change(Sender: TObject);
@@ -62,6 +69,7 @@ type
     function RunCommandAndGetOutput(Command: string): string;
     function DebianToPisi(DebName: string): string;
     function ReadFileToString(FilePath: string): string;
+    function KomutVarMi(Komut: string): Boolean;
 
   public
 
@@ -82,12 +90,19 @@ var
   Baslik: string;
   DebPath, AyiklamaKlasoru: string;
   FullXML, ActionsFile: TStringList;
-  HedefKlasor: string;
+  HedefKlasor, exe: string;
 implementation
 
 {$R *.lfm}
 
 { TForm1 }
+
+function TForm1.KomutVarMi(Komut: string): Boolean;
+begin
+  // which komutu ile sistemde arama yapıyoruz
+  Result := fpSystem('which ' + Komut + ' > /dev/null 2>&1') = 0;
+end;
+
 function TForm1.ZstToXzDonustur(const CalismaDizini: string): Boolean;
 var
   ZstDosyasi, XzDosyasi, GeciciKlasor: string;
@@ -102,7 +117,8 @@ begin
   begin
     // Eğer dosya zaten xz ise (bazı deb paketleri gibi), işleme gerek yok
     if FileExists(XzDosyasi) then Exit(True);
-    Memo4.Lines.Add('Hata: Dönüştürülecek .zst dosyası bulunamadı!');
+    Memo4.Lines.Add('Dönüştürülecek .zst dosyası bulunamadı!');
+    Application.ProcessMessages;
     Exit(False);
   end;
 
@@ -114,7 +130,8 @@ begin
     fpSystem(PChar('mkdir -p ' + GeciciKlasor));
 
     // 3. Ayıklama: .zst içeriğini geçici klasöre aç
-    Memo4.Lines.Add('Adım 1: zst içeriği dışarı aktarılıyor...'); Application.ProcessMessages; // Arayüzü tazele!
+    Memo4.Lines.Add('Adım 1: zst içeriği dışarı aktarılıyor...');
+    Application.ProcessMessages; // Arayüzü tazele!
     if fpSystem(PChar('tar --zstd -xf ' + ZstDosyasi + ' -C ' + GeciciKlasor)) <> 0 then
     begin
       Memo4.Lines.Add('Hata: zst ayıklanamadı! Sistemde "zstd" kurulu mu?');
@@ -122,11 +139,13 @@ begin
     end;
 
     // 4. Yeniden Paketleme: İçeriği XZ (J parametresi) olarak paketle
-    Memo4.Lines.Add('Adım 2: xz formatında sıkıştırılıyor (Bu biraz sürebilir)...'); Application.ProcessMessages; // Arayüzü tazele!
+    Memo4.Lines.Add('Adım 2: xz formatında sıkıştırılıyor (Bu biraz sürebilir)...');
+    Application.ProcessMessages; // Arayüzü tazele!
     // Not: 'cd' komutuyla klasöre girip paketlemek, dosya yollarının doğru olması için kritiktir.
     if fpSystem(PChar('cd ' + GeciciKlasor + ' && tar -cJf ' + XzDosyasi + ' .')) <> 0 then
     begin
-      Memo4.Lines.Add('Hata: XZ paketleme başarısız!'); Application.ProcessMessages; // Arayüzü tazele!
+      Memo4.Lines.Add('Hata: XZ paketleme başarısız!');
+      Application.ProcessMessages; // Arayüzü tazele!
       Exit(False);
     end;
 
@@ -134,15 +153,16 @@ begin
     fpSystem(PChar('rm -rf ' + GeciciKlasor));
      fpSystem(PChar('rm -f ' + ZstDosyasi)); // İstersen orijinal zst'yi silebilirsin
 
-    Memo4.Lines.Add('Başarılı: data.tar.xz oluşturuldu.');Application.ProcessMessages; // Arayüzü tazele!
+    Memo4.Lines.Add('Başarılı: data.tar.xz oluşturuldu.');
+    Application.ProcessMessages; // Arayüzü tazele!
     Result := True;
-  except
+    except
     on E: Exception do
     begin
-      Memo4.Lines.Add('Dönüştürme sırasında beklenmedik hata: ' + E.Message);
+      Memo4.Lines.Add('zst Dönüştürme sırasında beklenmedik hata: ' + E.Message);
       Application.ProcessMessages;
     end;
-  end;
+    end;
 end;
 
 function TForm1.RunCommandAndGetOutput(Command: string): string;
@@ -246,53 +266,63 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 var
   EksikPaketler: string;
-
-  function KomutVarMi(Komut: string): Boolean;
-  begin
-    // which komutu ile sistemde arama yapıyoruz
-    Result := fpSystem('which ' + Komut + ' > /dev/null 2>&1') = 0;
-  end;
 begin
 
+  //---ROOT OL---
   if BaseUnix.fpgetuid <> 0 then
+    begin
+      if FileExists('/usr/bin/pkexec') then
+        K := fpSystem('pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY ' + Application.ExeName)
+      else if FileExists('/usr/bin/kdesu') then
+        K := fpSystem('kdesu ' + Application.ExeName)
+      else
+      begin
+        ShowMessage('Hata: Yönetici yetkisi alınamadı! Lütfen sudo ile çalıştırın.');
+        K := -1;
+      end;
+      halt;
+    end;
+  // ----------------------------------------------------------------------------------
+
+
+  //---KÜTÜPHANE DESTEĞİ VERİLMİŞ Mİ---
+  if FileExists('/usr/lib/libtinfo.so.6') then
   begin
-       if FileExists('/usr/bin/pkexec') then
-       K := fpSystem('pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY ' + Application.ExeName)
-       else if FileExists('/usr/bin/kdesu') then
-       K := fpSystem('kdesu ' + Application.ExeName)
-       else
-       ShowMessage('Hata: Yetki yönetici (pkexec veya kdesu) bulunamadı! Lütfen uygulamayı terminalden "sudo" ile çalıştırın.');
-       halt; // Yetkisiz oturumu kapat
+       CheckBox1.OnChange := nil;
+       CheckBox1.Checked:=true;
+       CheckBox1.OnChange := @CheckBox1Change;
   end;
-  //Paket isimlerini indir.
+  // ----------------------------------------------------------------------------------
+
+
+  //---PAKET İSİMLERİNİ İNDİR---
   PisiDepo := TStringList.Create;
   PisiDepo.Sorted := True; // Arama hızı için sıralı olması şart
   if FileExists('pisi_liste.txt') then
   PisiDepo.LoadFromFile('pisi_liste.txt');
-
-  EksikPaketler := '';
+  // ----------------------------------------------------------------------------------
 
   // --- KRİTİK BAĞIMLILIK KONTROLÜ ---
+  EksikPaketler := '';
   if not KomutVarMi('ar') then EksikPaketler := EksikPaketler + ' - binutils (ar)' + sLineBreak;
   if not KomutVarMi('sha1sum') then EksikPaketler := EksikPaketler + ' - coreutils (sha1sum)' + sLineBreak;
   if not KomutVarMi('pisi') then EksikPaketler := EksikPaketler + ' - pisi' + sLineBreak;
   if not KomutVarMi('tar') then EksikPaketler := EksikPaketler + ' - tar' + sLineBreak;
   if not KomutVarMi('xz') then EksikPaketler := EksikPaketler + ' - xz' + sLineBreak;
 
-  if EksikPaketler <> '' then
+  if EksikPaketler <> '' then // Eksik bağımlılık varsa
   begin
-    ShowMessage('Dikkat! Programın çalışması için gerekli bazı paketler eksik:' + sLineBreak +
-                EksikPaketler + sLineBreak +
-                'Lütfen bu paketleri Pisi depolarından kurun.');
+    ShowMessage('Dikkat! Programın çalışması için gerekli bazı paketler eksik:'+sLineBreak+
+    EksikPaketler + sLineBreak +'Lütfen bu paketleri Pisi depolarından kurun.');
     Memo4.Lines.Add('[!] SİSTEM UYARISI: Eksik bağımlılıklar tespit edildi!');
   end
   else
   begin
     Memo4.Lines.Add('[+] Sistem kontrolü başarılı: Tüm bağımlılıklar kurulu.');
   end;
+  // ----------------------------------------------------------------------------------
 
-  // Formun geri kalan başlangıç işlemleri...
-  Memo4.Lines.Add('Deb2Pisi (Mecazi Edition) Başlatıldı.');
+  Memo4.Lines.Add('Deb2Pisi Başlatıldı.');
 end;
 
 procedure TForm1.Memo3Change(Sender: TObject);
@@ -320,168 +350,237 @@ begin
   if OpenDialog1.Execute then
   begin
     DebDosyasi := OpenDialog1.FileName;
+    Label4.Caption:=ExtractFileName(DebDosyasi);
+    Label4.Caption:=copy(Label4.Caption,0,(pos('_',Label4.Caption)-1)); // Seçilen deb paketini ilan et
+
+     // --- 1. TEMİZLİK YAP ---
     Memo4.Clear; // Log ekranını temizle
+    Edit1.Clear;
+    Edit2.Clear;
+    Edit3.Clear;
+    Memo2.Lines.Clear;
+    Memo3.Lines.Clear;
+    Memo5.Lines.Clear;
+    MemoBetikler.Lines.Clear;
+    fpSystem('mkdir -p /root/pisilik');
+    fpSystem('rm -rf /root/pisilik/*');
     Memo4.Lines.Add('Seçilen Paket: ' + ExtractFileName(DebDosyasi));
     Application.ProcessMessages;
-    // --- 1. ÇALIŞMA DİZİNİNİ HAZIRLA ---
-    fpSystem('rm -rf /root/pisilik');
-    fpSystem('mkdir -p /root/pisilik');
+    //---------------------------------------------------------------------------
 
-    Komut := 'cp ' + QuotedStr(DebDosyasi) + ' /root/pisilik/paket.deb';
-    fpSystem(PChar(Komut));
 
     // --- 2. PAKETİ PARÇALA ---
-    Memo4.Lines.Add('Paket parçalanıyor (ar x)...'); Application.ProcessMessages; // Arayüzü tazele!
+    Komut := 'cp ' + QuotedStr(DebDosyasi) + ' /root/pisilik/paket.deb';
+    fpSystem(PChar(Komut));
+    Memo4.Lines.Add('Paket parçalanıyor (ar x)...');
+    Application.ProcessMessages; // Arayüzü tazele!
     fpSystem('cd /root/pisilik && ar x paket.deb');
+    //------------------------------------------------------------------------------
 
-    // --- 3. CONTROL VE CONFFILES DOSYALARINI AYIKLA VE OKU ---
+
+
+    // --- 3. CONTROL VE DATA DOSYALARINI AYIKLA VE OKU ---
     if FileExists('/root/pisilik/control.tar.zst') then
-      fpSystem('tar --zstd -xf /root/pisilik/control.tar.zst -C /root/pisilik/ ./control ./conffiles 2>/dev/null')
+    fpSystem('tar --zstd -xf /root/pisilik/control.tar.zst -C /root/pisilik/')
     else if FileExists('/root/pisilik/control.tar.xz') then
-      fpSystem('tar -xf /root/pisilik/control.tar.xz -C /root/pisilik/ ./control ./conffiles 2>/dev/null')
+    fpSystem('tar -xf /root/pisilik/control.tar.xz -C /root/pisilik/')
     else if FileExists('/root/pisilik/control.tar.gz') then
-      fpSystem('tar -xf /root/pisilik/control.tar.gz -C /root/pisilik/ ./control ./conffiles 2>/dev/null');
+    fpSystem('tar -xf /root/pisilik/control.tar.gz -C /root/pisilik/');
 
-    // Hata ayıklama için log düşelim
-    if FileExists('/root/pisilik/conffiles') then
-       begin
-       Memo4.Lines.Add('Yapılandırma listesi (conffiles) bulundu.');
-       Application.ProcessMessages; // Arayüzü tazele!
-       end
-    else
-       Memo4.Lines.Add('Paket yapılandırma dosyası içermiyor (conffiles yok).');
-       Application.ProcessMessages; // Arayüzü tazele!
+    if FileExists('/root/pisilik/data.tar.zst') then
+    fpSystem('tar --zstd -xf /root/pisilik/data.tar.zst -C /root/pisilik/')
+    else if FileExists('/root/pisilik/data.tar.xz') then
+    fpSystem('tar -xf /root/pisilik/data.tar.xz -C /root/pisilik/')
+    else if FileExists('/root/pisilik/data.tar.gz') then
+    fpSystem('tar -xf /root/pisilik/data.tar.gz -C /root/pisilik/');
+    //------------------------------------------------------------------------------
 
+
+    //---ÇALIŞTIRMA KOMUTU AYARLA---
+    if DirectoryExists('/root/pisilik/data/usr/bin/') then
+    begin
+    if RunCommand('bash', ['-c', 'ls /root/pisilik/data/usr/bin/'], exe) then begin end;
+    end;
+    if DirectoryExists('/root/pisilik/usr/bin/') then
+    begin
+    if RunCommand('bash', ['-c', 'ls /root/pisilik/usr/bin/'], exe) then begin end;
+    end;
+    if DirectoryExists('/root/pisilik/usr/games/') then
+    begin
+    if RunCommand('bash', ['-c', 'ls /root/pisilik/usr/games/'], exe) then begin exe:='/usr/games/'+exe; end;
+    end;
+    //------------------------------------------------------------------------------
+
+
+
+    //---BAĞIMLILIKLARI AYARLA---
     if FileExists('/root/pisilik/control') then
     begin
-       if RunCommand('bash', ['-c', 'grep "^Depends:" /root/pisilik/control | cut -d":" -f2'], Cikti) then
+      if RunCommand('bash', ['-c', 'grep -E "^(Depends|Pre-Depends):" /root/pisilik/control | cut -d":" -f2- | tr "\n" ","'], Cikti) then
        begin
          HamListe := Trim(Cikti);
          Edit1.Text := HamListe;
-
          TemizListe := '';
          Parcalar := HamListe.Split([',', '|']);
-
+         // TEMİZLİK
          for i := 0 to High(Parcalar) do
          begin
+           // Baştaki ve sondaki boşlukları temizle
            Paket := Trim(Parcalar[i]);
-           if Pos(' ', Paket) > 0 then Paket := Copy(Paket, 1, Pos(' ', Paket) - 1);
-           if Pos('(', Paket) > 0 then Paket := Copy(Paket, 1, Pos('(', Paket) - 1);
-
+           if Pos('(', Paket) > 0 then
+             Paket := Copy(Paket, 1, Pos('(', Paket) - 1);
            Paket := Trim(Paket);
            if Paket <> '' then
-             TemizListe := TemizListe + Paket + ' ';
+           begin
+             if TemizListe = '' then
+               TemizListe := Paket
+             else
+               TemizListe := TemizListe + ' ' + Paket;
+           end;
          end;
 
          Edit2.Text := Trim(TemizListe);
          Button9Click(self); //pisi bağımlılıklarına dönüştür.
-         Memo4.Lines.Add('Bağımlılıklar Başarıyla Okundu: ' + Edit2.Text);
+         Memo4.Lines.Add('Bağımlılık araştırması bitti: ' + Edit2.Text);
          Application.ProcessMessages; // Arayüzü tazele!
        end;
-    end
-    else
-      Memo4.Lines.Add('Uyarı: Bağımlılık listesi (control) okunamadı.');
-      Application.ProcessMessages; // Arayüzü tazele!
+       end
+       else
+       Memo4.Lines.Add('Uyarı: Bağımlılık bulunamadı.');
+       Application.ProcessMessages; // Arayüzü tazele!
+       //------------------------------------------------------------------------------
+
+
+
 
     // --- 4. ZST -> XZ DÖNÜŞTÜRME FONKSİYONUNU ÇAĞIR ---
+    if not FileExists('/root/pisilik/control.tar.zst') then exit; // ZST UZANTILI DOSYA YOKSA ÇIK
     if ZstToXzDonustur('/root/pisilik') then
     begin
-      Memo4.Lines.Add('Dönüştürme başarılı veya zaten xz formatında.'); Application.ProcessMessages; // Arayüzü tazele!
+      Memo4.Lines.Add('zst ==> xz  dönüştürme başarılı.'); Application.ProcessMessages; // Arayüzü tazele!
       Memo4.Lines.Add('Artık (pspec oluştur) düğmesine basabilirsin.'); Application.ProcessMessages; // Arayüzü tazele!
     end
     else
     begin
-      Memo4.Lines.Add('Hata: Data dosyası dönüştürülemedi! İnşa süreci riskli.');Application.ProcessMessages; // Arayüzü tazele!
+      Memo4.Lines.Add('zst uzantılı data dosyası dönüştürülemedi! İnşa süreci riskli.');Application.ProcessMessages; // Arayüzü tazele!
     end;
-  end;
+    end;
+    //------------------------------------------------------------------------------
 end;
 
-
-
-procedure TForm1.Button11Click(Sender: TObject);
-var
-  ConfList: TStringList;
-  AnaDizin, HedefFiles, Satir, KaynakDosya, KomutCiktisi: string;
-  i, Sayac: Integer;
-begin
-  Sayac := 0;
-  HedefFiles := '/root/pisilik/files/';
-  ForceDirectories(HedefFiles);
-
-  // 1. ADIM: /var/pisi altındaki klasörü bul (Körü körüne Edit1'e güvenme)
-  // En son işlem yapılan klasörü bulmak için 'ls -td' kullanıyoruz (tarihe göre sırala)
-  if RunCommand('/bin/sh', ['-c', 'ls -td /var/pisi/*/ | head -n 1'], KomutCiktisi) then
-    AnaDizin := Trim(KomutCiktisi) + 'install'
-  else
-    AnaDizin := '';
-
-  // Manuel Kontrol: Eğer yukarıdaki boş dönerse Edit1'den dene
-  if (AnaDizin = 'install') or (AnaDizin = '') then
-     AnaDizin := '/var/pisi/' + Trim(Edit1.Text) + '-3-1/install';
-
-  if not DirectoryExists(AnaDizin) then
-  begin
-    Memo4.Lines.Add('HATA: Klasör bulunamadı! Yol: ' + AnaDizin);
-    Memo4.Lines.Add('Lütfen terminalde "ls /var/pisi" yazıp klasör adını kontrol et.');
-    Exit;
-  end;
-
-  Memo4.Lines.Add('Çalışılan Gerçek Yol: ' + AnaDizin);
-
-  // 2. ADIM: Kopyalama İşlemi
-  if FileExists('/root/pisilik/conffiles') then
-  begin
-    ConfList := TStringList.Create;
-    try
-      ConfList.LoadFromFile('/root/pisilik/conffiles');
-      for i := 0 to ConfList.Count - 1 do
-      begin
-        Satir := Trim(ConfList[i]);
-        if (Satir = '') or (Satir.StartsWith('#')) then Continue;
-
-        if Satir[1] <> '/' then Satir := '/' + Satir;
-        KaynakDosya := AnaDizin + Satir;
-
-        if FileExists(KaynakDosya) then
-        begin
-          if CopyFile(KaynakDosya, HedefFiles + ExtractFileName(Satir)) then
-          begin
-            Memo4.Lines.Add('TAMAM: ' + ExtractFileName(Satir));
-            Inc(Sayac);
-          end;
-        end;
-      end;
-
-      // Özel durum: mc.keymap'i de alalım
-      if FileExists(AnaDizin + '/etc/mc/mc.keymap') then
-         CopyFile(AnaDizin + '/etc/mc/mc.keymap', HedefFiles + 'mc.keymap');
-
-    finally
-      ConfList.Free;
-    end;
-  end;
-  ShowMessage(IntToStr(Sayac) + ' dosya files/ klasörüne kopyalandı.');
-end;
 
 procedure TForm1.Button10Click(Sender: TObject);
 begin
-  // Sadece geçici dosyaları siliyoruz, pisi paketini ve kaynak deb'i koruyabilirsin
-  fpSystem('rm -rf /root/pisilik/files');
-  fpSystem('rm -f /root/pisilik/control /root/pisilik/conffiles /root/pisilik/data.tar*');
-  fpSystem('rm -f /root/pisilik/package.py /root/pisilik/actions.py /root/pisilik/pspec.xml');
+  fpSystem('rm -rf /root/pisilik/*');
   Memo4.Lines.Clear;
   Memo4.Lines.Add('Geçici dosyalar temizlendi. Saha yeni paket için hazır!');
 end;
+
+procedure TForm1.Button11Click(Sender: TObject); // PAKETİ KALDIR
+var
+  EnSonPaket: string;
+  AProcess: TProcess;
+  Buffer: array[0..2047] of Byte; // Sabit 2048 byte dizi
+  BytesRead: LongInt;
+  S: string;
+begin
+  Memo4.Lines.Add('..................................');
+  Memo4.Lines.Add('...KALDIRMA İŞLEMİ BAŞLATILIYOR...');
+
+  // 1. En son üretilen .pisi paketini bul
+  if RunCommand('bash', ['-c', 'ls -t /root/pisilik/*.pisi | head -n 1'], EnSonPaket) then
+  begin
+    EnSonPaket := Trim(EnSonPaket);
+    EnSonPaket := copy(EnSonPaket,0,(pos('-',EnSonPaket)-1));
+    EnSonPaket := ExtractFileName(EnSonPaket);
+    if (EnSonPaket = '') then Exit;
+
+    AProcess := TProcess.Create(nil);
+    try
+      AProcess.Executable := '/usr/bin/pisi';
+      AProcess.Parameters.Add('rm');
+      AProcess.Parameters.Add('--no-color');
+      AProcess.Parameters.Add(EnSonPaket);
+
+      AProcess.Options := [poUsePipes, poStderrToOutPut, poNoConsole];
+      AProcess.Execute;
+
+      // OKUMA DÖNGÜSÜ
+      while AProcess.Running or (AProcess.Output.NumBytesAvailable > 0) do
+      begin
+        if AProcess.Output.NumBytesAvailable > 0 then
+        begin
+          BytesRead := AProcess.Output.Read(Buffer, SizeOf(Buffer));
+
+          if BytesRead > 0 then
+          begin
+            SetString(S, PChar(@Buffer[0]), BytesRead);
+            Memo4.Lines.Add(S);
+            Application.ProcessMessages; // Arayüzü tazele!
+            // Memo'yu en aşağı kaydır (Otomatik Scroll)
+            Memo4.SelStart := Length(Memo4.Text);
+          end;
+        end;
+        Sleep(10); // Parantez hatası burada düzeldi:
+        Application.ProcessMessages;
+      end;
+
+      if AProcess.ExitStatus = 0 then
+    begin
+      // 1. Teknik detayları loga (Memo) ekle
+      Memo4.Lines.Add('---------------------------------------');
+      Memo4.Lines.Add('DURUM: Paket kaldırıldı.');
+      Memo4.Lines.Add('PAKET: ' + EnSonPaket);
+      Memo4.Lines.Add('ZAMAN: ' + DateTimeToStr(Now));
+      Application.ProcessMessages; // Arayüzü tazele!
+    end
+    else
+    begin
+      Memo4.Lines.Add('HATA: Paket kaldırma sırasında bir sorun oluştu.');
+      Application.ProcessMessages; // Arayüzü tazele!
+      ShowMessage('HATA: Paket kaldırma sırasında bir sorun oluştu.');
+    end;
+
+    finally
+      AProcess.Free;
+    end;
+  end;
+end;
+
+
+
+
+
+
+procedure TForm1.Button15Click(Sender: TObject);
+var
+  AProcess: TProcess;
+begin
+  if exe = '' then Exit;
+  Memo4.Lines.Add('>>> ' + exe + ' başlatılıyor...');
+  AProcess := TProcess.Create(nil);
+  try
+    //AProcess.Executable := '/usr/bin/konsole';
+    //AProcess.Parameters.Add('--noclose'); // xterm'deki '-hold' yerine geçer
+    AProcess.Executable := '/usr/bin/xterm';
+    AProcess.Parameters.Add('-hold'); // Program kapansa bile pencereyi açık tutar (hata görmek için)
+    AProcess.Parameters.Add('-e');
+    AProcess.Parameters.Add(exe);
+    AProcess.Execute;
+
+    Memo4.Lines.Add('✓ Komut gönderildi: ' + exe);
+  finally
+    AProcess.Free;
+  end;
+end;
+
 
 
 procedure TForm1.Button2Click(Sender: TObject);
 var
   S, Kelime, SonucXML: string;
-  i, k: Integer;
-  ConfList: TStringList;
-  ConfDosyaYolu, Satir: string;
+  i: Integer;
 begin
-  Memo2.Lines.Clear;
 
   // ARTIK KAYNAĞIMIZ EDIT3 (Pisi Karşılıkları)
   S := Trim(Edit3.Text);
@@ -492,7 +591,7 @@ begin
   end;
 
   // --- 1. RUNTIME (BAĞIMLILIKLAR) KISMI ---
-  SonucXML := '<Runtime>' + sLineBreak;
+  SonucXML := '    <Runtime>' + sLineBreak;
   Kelime := '';
   S := S + ' '; // Son kelimeyi yakalamak için
 
@@ -506,61 +605,41 @@ begin
       begin
         // Mükerrer kontrolü
         if Pos('<Dependency>' + Kelime + '</Dependency>', SonucXML) = 0 then
-          SonucXML := SonucXML + '    <Dependency>' + Kelime + '</Dependency>' + sLineBreak;
+          SonucXML := SonucXML + '        <Dependency>' + Kelime + '</Dependency>' + sLineBreak;
 
         Kelime := '';
       end;
     end;
   end;
-  SonucXML := SonucXML + '</Runtime>' + sLineBreak;
-
-  // --- 2. CONFFILES (ADDITIONAL FILES) KISMI ---
-  ConfDosyaYolu := '/root/pisilik/conffiles';
-  if FileExists(ConfDosyaYolu) then
-  begin
-    ConfList := TStringList.Create;
-    try
-      ConfList.LoadFromFile(ConfDosyaYolu);
-
-      SonucXML := SonucXML + '    <AdditionalFiles>' + sLineBreak;
-
-      for k := 0 to ConfList.Count - 1 do
-      begin
-        Satir := Trim(ConfList[k]);
-        if Satir <> '' then
-        begin
-             if Trim(Satir) <> '' then
-             begin
-              SonucXML := SonucXML + '        <AdditionalFile target="' + Trim(Satir) + '">' +
-              ExtractFileName(Trim(Satir)) + '</AdditionalFile>' + sLineBreak;
-             end;
-        end;
-      end;
-
-      SonucXML := SonucXML + '    </AdditionalFiles>' + sLineBreak;
-    finally
-      ConfList.Free;
-    end;
-  end;
-
-  // Sonuçların tamamını Memo2'ye tek seferde basıyoruz
+  SonucXML := SonucXML + '    </Runtime>' + sLineBreak;
   Memo2.Lines.Text := SonucXML;
+  // -------------------------------------------------------------
 end;
 
 procedure TForm1.Button3Click(Sender: TObject);
 var
-  SHA1Sonuc, PaketAdiTemiz, ArsivDosyasi, ArsivTipi, Komut, PaketVersiyon, Satir: string;
-  FullXML, ConfList, MemoSatirlari: TStringList;
-  i: Integer;
-  DosyaAdi: string;
+  SHA1Sonuc, PaketAdiTemiz, ArsivDosyasi, ArsivTipi, Komut, PaketVersiyon: string; //, Satir
+  FullXML, MemoSatirlari: TStringList; // ConfList,
+ // DosyaAdi: string;
+ // i, P: Integer;
+ // HedefYol: string; // Hepsi string (metin) tipinde
 begin
-  // --- 1. ADIM: DOSYA TESPİTİ ---
-  ArsivDosyasi := 'data.tar.xz';
-  ArsivTipi := 'tarxz';
 
-  if not FileExists('/root/pisilik/' + ArsivDosyasi) then
+  // --- 1. ADIM: DOSYA TESPİTİ ---
+  if FileExists('/root/pisilik/data.tar.xz') then
   begin
-    Memo4.Lines.Add('Hata: data.tar.xz bulunamadı!');
+    ArsivDosyasi := 'data.tar.xz';
+    ArsivTipi := 'tarxz';
+  end
+  // XZ yoksa GZ kontrolü yapalım
+  else if FileExists('/root/pisilik/data.tar.gz') then
+  begin
+    ArsivDosyasi := 'data.tar.gz';
+    ArsivTipi := 'targz'; // Pisi pspec.xml içinde 'targz' olarak bekler
+  end
+  else
+  begin
+    Memo4.Lines.Add('Hata: Ne data.tar.xz ne de data.tar.gz bulunabildi!');
     Exit;
   end;
 
@@ -594,6 +673,7 @@ begin
     PaketAdiTemiz := Copy(PaketAdiTemiz, 1, Pos('-', PaketAdiTemiz) - 1)
   else
     PaketAdiTemiz := ChangeFileExt(PaketAdiTemiz, '');
+  PaketAdiTemiz := Label4.Caption;
 
   // --- 5. ADIM: PSPEC.XML OLUŞTURMA ---
   FullXML := TStringList.Create;
@@ -616,78 +696,18 @@ begin
     FullXML.Add('        <Summary xml:lang="tr">' + PaketAdiTemiz + ' paketi</Summary>');
     FullXML.Add('        <Description xml:lang="tr">Otomatik dönüştürülmüştür.</Description>');
 
-    // --- 6. ADIM: AKILLI MEMO2 FİLTRELEME ---
+    // --- 6. ADIM: MEMO2 yi ekle ---
     if Trim(Memo2.Lines.Text) <> '' then
     begin
       MemoSatirlari := TStringList.Create;
-      try
-        MemoSatirlari.Text := Memo2.Lines.Text;
-        for i := 0 to MemoSatirlari.Count - 1 do
-        begin
-          Satir := Trim(MemoSatirlari[i]);
-          if (Satir = '') or (Satir = '<AdditionalFiles>') or (Satir = '</AdditionalFiles>') then Continue;
-
-          if Pos('<AdditionalFile', Satir) > 0 then
-          begin
-            DosyaAdi := Copy(Satir, Pos('>', Satir) + 1, Length(Satir));
-            DosyaAdi := Copy(DosyaAdi, 1, Pos('</', DosyaAdi) - 1);
-
-            if FileExists('/root/pisilik/files/' + DosyaAdi) then
-            begin
-              if Pos('<AdditionalFiles>', FullXML.Text) = 0 then
-                FullXML.Add('    <AdditionalFiles>');
-              FullXML.Add('        ' + Satir);
-            end
-            else
-              Memo4.Lines.Add('[-] XML Filtresi: Dosya yok, atlandı: ' + DosyaAdi);
-          end
-          else
-            FullXML.Add('    ' + Satir);
-        end;
-
-        if Pos('<AdditionalFiles>', FullXML.Text) > 0 then
-          FullXML.Add('    </AdditionalFiles>');
-      finally
-        MemoSatirlari.Free;
-      end;
+      MemoSatirlari.Text := Memo2.Lines.Text;
+      FullXML.Add(MemoSatirlari.Text);
+      MemoSatirlari.Free;
     end;
 
-    // --- 7. ADIM: FILES BLOĞU VE KÜTÜPHANE DESTEĞİ ---
-    FullXML.Add('        <Files>');
-    if FileExists('/root/pisilik/conffiles') then
-    begin
-      ConfList := TStringList.Create;
-      try
-        ConfList.LoadFromFile('/root/pisilik/conffiles');
-        for i := 0 to ConfList.Count - 1 do
-        begin
-          if Trim(ConfList[i]) <> '' then
-          begin
-            if FileExists('/root/pisilik/files/' + ExtractFileName(Trim(ConfList[i]))) then
-               FullXML.Add('            <Path fileType="config">' + Trim(ConfList[i]) + '</Path>')
-            else
-               Memo4.Lines.Add('[-] XML Filtresi (Conffiles): Dosya diskte yok, çıkarıldı: ' + ExtractFileName(Trim(ConfList[i])));
-          end;
-        end;
-      finally
-        ConfList.Free;
-      end;
-    end;
-
-    // Standart Dizinler ve Gelişmiş Yol Tanımları
-    FullXML.Add('            <Path fileType="executable">/usr/bin/*</Path>');
-    FullXML.Add('            <Path fileType="executable">/bin/*</Path>');
-    // Kütüphane dosyaları için derinlik artırıldı (x86_64-linux-gnu vb. için)
-    FullXML.Add('            <Path fileType="library">/usr/lib/*</Path>');
-    FullXML.Add('            <Path fileType="library">/usr/lib/*/*</Path>');
-    FullXML.Add('            <Path fileType="library">/lib/*</Path>');
-    FullXML.Add('            <Path fileType="library">/lib/*/*</Path>');
-    // Header dosyaları için destek eklendi (zlib gibi paketler için kritik)
-    FullXML.Add('            <Path fileType="header">/usr/include/*</Path>');
-    FullXML.Add('            <Path fileType="data">/usr/share/*</Path>');
-    FullXML.Add('            <Path fileType="config">/etc/*</Path>');
-    FullXML.Add('            <Path fileType="doc">/usr/share/doc/*</Path>');
-    FullXML.Add('        </Files>');
+    FullXML.Add('    <Files>');
+    FullXML.Add('        <Path fileType="all">/</Path>');
+    FullXML.Add('    </Files>');
 
     FullXML.Add('    </Package>');
 
@@ -702,7 +722,7 @@ begin
 
     FullXML.SaveToFile('/root/pisilik/pspec.xml');
     Memo3.Lines.Text := FullXML.Text;
-    Memo4.Lines.Add('[+] pspec.xml başarıyla oluşturuldu. Versiyon: ' + PaketVersiyon);
+    Memo4.Lines.Add('[+] pspec.xml başarıyla oluşturuldu. Paket Versiyon: ' + PaketVersiyon);
     Application.ProcessMessages;
 
   finally
@@ -782,33 +802,36 @@ begin
   try
     ActionsFile.Add('#!/usr/bin/python');
     ActionsFile.Add('# -*- coding: utf-8 -*-');
-    ActionsFile.Add('from pisi.actionsapi import pisitools');
-    ActionsFile.Add('from pisi.actionsapi import get');
+    ActionsFile.Add('');
     ActionsFile.Add('from pisi.actionsapi import shelltools');
+    ActionsFile.Add('from pisi.actionsapi import pisitools');
     ActionsFile.Add('import os');
-
+    ActionsFile.Add('');
+    ActionsFile.Add('# data klasörü varsa WorkDir i değiştir');
+    ActionsFile.Add('WorkDir = "data" if shelltools.isDirectory("data") else "."');
+    ActionsFile.Add('');
+    ActionsFile.Add('def safe_insinto(target, source):');
+    ActionsFile.Add('    """Boş dizinleri atlar, boşsa uyarı basar."""');
+    ActionsFile.Add('    if shelltools.isDirectory(source):');
+    ActionsFile.Add('        if os.listdir(source):');
+    ActionsFile.Add('            pisitools.insinto(target, "%s/*" % source)');
+    ActionsFile.Add('        else:');
+    ActionsFile.Add('            print("Uyarı: ''{0}'' dizini boş, kopyalanmadı.".format(source))');
+    ActionsFile.Add('');
     ActionsFile.Add('def install():');
-    ActionsFile.Add('    xz_path = "/root/pisilik/data.tar.xz"');
-    ActionsFile.Add('    if os.path.exists(xz_path):');
-    ActionsFile.Add('        shelltools.system("cp %s ." % xz_path)');
-    ActionsFile.Add('        shelltools.system("tar -xf data.tar.xz --no-same-owner --no-same-permissions")');
-    ActionsFile.Add('    else:');
-    ActionsFile.Add('        print("Hata: data.tar.xz bulunamadi!")');
-
-    ActionsFile.Add('    # Ayiklanan klasorleri sisteme yerlestir');
-    ActionsFile.Add('    for folder in ["usr", "etc", "opt", "bin", "lib"]:');
-    ActionsFile.Add('        if os.path.exists(folder):');
-    ActionsFile.Add('            if os.listdir(folder):');
-    ActionsFile.Add('                pisitools.insinto("/", folder)');
+    ActionsFile.Add('    for d in ["usr", "opt", "etc", "lib", "var"]:');
+    ActionsFile.Add('        safe_insinto("/%s" % d, d)');
 
     ActionsFile.SaveToFile('/root/pisilik/actions.py');
     Memo5.Lines.Text := ActionsFile.Text;
   finally
     ActionsFile.Free;
   end;
-  Memo4.Lines.Add('actions.py shelltools desteği ile düzeltildi.');
-  Application.ProcessMessages; // Arayüzü tazele!
+  Memo4.Lines.Add('>>> actions.py oluşturuldu.');
 end;
+
+
+
 
 procedure TForm1.Button6Click(Sender: TObject);
 begin
@@ -831,7 +854,8 @@ var
 //const
  // LocalBufSize = 2048;
 begin
-  Memo4.Lines.Add('Kurulum işlemi başlatılıyor...');
+  Memo4.Lines.Add('.................................');
+  Memo4.Lines.Add('...KURULUM İŞLEMİ BAŞLATILIYOR...');
 
   // 1. En son üretilen .pisi paketini bul
   if RunCommand('bash', ['-c', 'ls -t /root/pisilik/*.pisi | head -n 1'], EnSonPaket) then
@@ -901,12 +925,14 @@ end;
 
 procedure TForm1.Button8Click(Sender: TObject);
 var
-  ControlArsivi, Content, DosyaListesi: string;
-  PackageTemplate, ConfList: TStringList;
-  i: Integer;
+  Content,DosyaListesi: string; //ControlArsivi,
+  PackageTemplate: TStringList; //, ConfList
+  //i: Integer;
 
-  procedure AddScriptToTemplate(DebFile, PisiFunc: string);
-  begin
+
+    ///////////////////
+    procedure AddScriptToTemplate(DebFile, PisiFunc: string);
+    begin
     PackageTemplate.Add('def ' + PisiFunc + '():');
     if ((PisiFunc = 'postInstall') or (PisiFunc = 'postRemove')) and (Pos('.desktop', DosyaListesi) > 0) then
     begin
@@ -915,7 +941,7 @@ var
     end;
 
     if FileExists('/root/pisilik/' + DebFile) then
-    begin
+    begin  //shelltools.remove("/usr/share/icons/baglama.png")
       Content := ReadFileToString('/root/pisilik/' + DebFile);
       PackageTemplate.Add('    # DEBIAN ' + UpperCase(DebFile) + ' YEDEĞİ:');
       PackageTemplate.Add('    # ' + StringReplace(Trim(Content), #10, #10 + '    # ', [rfReplaceAll]));
@@ -927,56 +953,25 @@ var
         PackageTemplate.Add('    pass');
     end;
     PackageTemplate.Add('');
-  end;
+    end;
+    ///////////////////
+
 
 begin
   DosyaListesi := RunCommandAndGetOutput('tar -tf /root/pisilik/data.tar*');
   MemoBetikler.Lines.Clear;
-  Memo4.Lines.Add('Paket zekası çalıştırılıyor...');
+  Memo4.Lines.Add('package.py oluşturuluyor...');
 
   PackageTemplate := TStringList.Create;
   try
-    // 1. Python Kütüphaneleri (os eklendi)
     PackageTemplate.Add('from pisi.actionsapi import shelltools');
     PackageTemplate.Add('from pisi.actionsapi import pisitools');
-    PackageTemplate.Add('from pisi.actionsapi import get');
-    PackageTemplate.Add('import os'); // Dosya kontrolü için standart python os modülü
+    PackageTemplate.Add('');
+    PackageTemplate.Add('');
+    PackageTemplate.Add('    # Bu kısımda elle düzenleme yapabilirsiniz.');
+    PackageTemplate.Add('    # Örnek: shelltools.remove("/usr/share/icons/bglm.png")');
     PackageTemplate.Add('');
 
-    // 2. SETUP
-    PackageTemplate.Add('def setup():');
-    PackageTemplate.Add('    shelltools.system("tar -xf data.tar.xz")');
-    PackageTemplate.Add('');
-
-    // 3. INSTALL
-    // --- INSTALL BLOĞUNDA ÖN DENETİM ---
-    PackageTemplate.Add('def install():');
-    PackageTemplate.Add('    pisitools.insinto("/", "usr")');
-
-    if FileExists('/root/pisilik/conffiles') then
-    begin
-      ConfList := TStringList.Create;
-      try
-        ConfList.LoadFromFile('/root/pisilik/conffiles');
-        for i := 0 to ConfList.Count - 1 do
-        begin
-          if Trim(ConfList[i]) <> '' then
-          begin
-            // BİZ KONTROL EDİYORUZ: package.py'ye sadece var olanları yazıyoruz
-            if FileExists('/root/pisilik/files/' + ExtractFileName(Trim(ConfList[i]))) then
-            begin
-               PackageTemplate.Add(Format('    pisitools.insinto("%s", "files/%s")',
-                 [ExtractFilePath(Trim(ConfList[i])), ExtractFileName(Trim(ConfList[i]))]));
-            end;
-          end;
-        end;
-      finally
-        ConfList.Free;
-      end;
-    end;
-    PackageTemplate.Add('');
-
-    // 4. Betikler
     AddScriptToTemplate('preinst', 'preInstall');
     AddScriptToTemplate('postinst', 'postInstall');
     AddScriptToTemplate('prerm', 'preRemove');
@@ -989,7 +984,7 @@ begin
     PackageTemplate.Free;
   end;
 
-  Memo4.Lines.Add('package.py (Hata görmezden gelme zekasıyla) hazırlandı.');
+  Memo4.Lines.Add('package.py hazırlandı.');
   Application.ProcessMessages;
 end;
 
@@ -1001,7 +996,7 @@ begin
   S := Trim(Edit2.Text);
   if S = '' then
   begin
-    ShowMessage('Hata: Edit2 (Debian Listesi) boş! Önce bağımlılıkları ayıkla.');
+    Memo4.Lines.Add('Bağımlılık bulunamadı.Bağımlılık yok.');
     Exit;
   end;
 
@@ -1018,7 +1013,6 @@ begin
       if Kelime <> '' then
       begin
         // TERCÜME BURADA OLUYOR
-        // DebianToPisi fonksiyonu libc6'yı glibc yapacak
         PisiPaket := DebianToPisi(Kelime);
 
         if GuncelEdit3 <> '' then GuncelEdit3 := GuncelEdit3 + ' ';
@@ -1033,7 +1027,75 @@ begin
   Edit3.Text := GuncelEdit3;
 
   // LOG ekranına da bilgi düşelim
-  Memo4.Lines.Add('Tercüme Tamamlandı: Debian isimleri Pisi karşılıklarına çevrildi.');
+  Memo4.Lines.Add('Debian bağımlılıkları Pisi karşılıklarına çevrildi.');
+end;
+
+procedure TForm1.CheckBox1Change(Sender: TObject);
+begin
+  if CheckBox1.Checked then  // Kütüphane desteği ver
+  begin
+    Memo4.Lines.Add('>>> İşlem başlatılıyor...');
+
+         fpSystem('ln -sf /usr/lib/libncursesw.so.6 /usr/lib/libtinfo.so.6');
+         fpSystem('ln -sf /usr/lib/libncursesw.so.6 /usr/lib/libncurses.so.6');
+         fpSystem('ln -sf /usr/lib/libpcre.so.1 /usr/lib/libpcre.so.3');
+         fpSystem('ln -sf /usr/lib/libpcap.so.1 /usr/lib/libpcap.so.0.8');
+         fpSystem('ln -sf /usr/lib/libreadline.so.8 /usr/lib/libreadline.so.7');
+         fpSystem('ln -sf /usr/lib/libboost_program_options.so.1.90.0 /usr/lib/libboost_program_options.so.1.74.0');
+         fpSystem('ln -sf /usr/lib/libboost_system.so.1.90.0 /usr/lib/libboost_system.so.1.74.0');
+         fpSystem('ln -sf /usr/lib/libncursesw.so.6.5 /usr/lib/libtinfo.so.5');
+         fpSystem('ln -sf /usr/lib/libjpeg.so.8 /usr/lib/libjpeg.so.62');
+
+         fpSystem('ldconfig');
+
+
+
+      // İşlem bittikten sonra dosyayı kontrol et (Stream yerine direkt dosya kontrolü daha güvenli)
+      if FileExists('/usr/lib/libtinfo.so.6') then
+      begin
+        Memo4.Lines.Add('✓ BAŞARILI: Köprü oluşturuldu.');
+      end
+      else
+      begin
+        Memo4.Lines.Add('X HATA: Dosya kopyalanamadı.');
+      end;
+  end
+  //------------------------------------------------------------------------------
+
+
+  else
+  begin //---KÜTÜPHANE DESTEĞİNİ KALDIR---
+    Memo4.Lines.Add('---');
+    Memo4.Lines.Add('>>> Sistem temizliği başlatılıyor (Restorasyon)...');
+
+    fpSystem('rm -fv /usr/lib/libtinfo.so.6');
+    fpSystem('rm -fv /usr/lib/libncurses.so.6');
+    fpSystem('rm -fv /usr/lib/libpcre.so.3');
+    fpSystem('rm -fv /usr/lib/libpcap.so.0.8');
+    fpSystem('rm -fv /usr/lib/libreadline.so.7');
+    fpSystem('rm -fv /usr/lib/liblua5.3-lpeg.so.2');
+    fpSystem('rm -fv /usr/lib/liblua5.3.so.0');
+    fpSystem('rm -fv /usr/lib/libboost_program_options.so.1.74.0');
+    fpSystem('rm -fv /usr/lib/libboost_system.so.1.74.0');
+    fpSystem('rm -fv /usr/lib/libtinfo.so.5');
+     fpSystem('rm -fv /usr/lib/libjpeg.so.62');
+
+    fpSystem('ldconfig');
+
+
+      // Kontrol: Dosyalar gerçekten silindi mi?
+      if not FileExists('/usr/lib/libtinfo.so.6') then
+      begin
+        Memo4.Lines.Add('✓ Temizlik Tamamlandı: Sistem orijinal haline döndü.');
+        Memo4.Lines.Add('✓ ldconfig güncellendi.');
+      end
+      else
+      begin
+        Memo4.Lines.Add('X HATA: Bazı dosyalar silinemedi!');
+      end;
+
+  end;
+  //------------------------------------------------------------------------------
 end;
 
 end.
