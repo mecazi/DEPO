@@ -13,8 +13,8 @@ object Form1: TForm1
     Height = 645
     Top = 46
     Width = 929
-    ActivePage = TabSheet2
-    TabIndex = 1
+    ActivePage = TabSheet1
+    TabIndex = 0
     TabOrder = 0
     object TabSheet1: TTabSheet
       Caption = 'Paket Aç'

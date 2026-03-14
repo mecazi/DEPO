@@ -64,7 +64,7 @@ type
     procedure Memo5Change(Sender: TObject);
     procedure MemoBetiklerChange(Sender: TObject);
   private
-    PisiDepo: TStringList; // Tüm pisi paketlerini burada tutacağız
+    PisiDepo: TStringList; // Tüm pisi paketlerini burada tutacağız.
     function ZstToXzDonustur(const CalismaDizini: string): Boolean;
     function RunCommandAndGetOutput(Command: string): string;
     function DebianToPisi(DebName: string): string;
