@@ -14,4 +14,4 @@ ar                        binutils                .deb paketlerini parçalamak
 sha1sum                  coreutils                 Arşiv doğrulama (SHA1)
 tar / xz / zstd        tar, xz, zstd               Veri arşivlerini açmak
 pisi-build                 pisi                    Yeni paketi inşa etmek
-Lazarus / FPC         lazarus,fpc,fpcsrc           Kaynak koddan derlemek için
+Lazarus / FPC         lazarus,fpc,fpcsrc           Kaynak koddan derlemek için..
