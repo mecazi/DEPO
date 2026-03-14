@@ -7,5 +7,6 @@ backup/
 *.lrs
 *.bak
 *.lps
+*.dbg
 # Çalıştırılabilir dosyanın kendisi
 deb2pisi
