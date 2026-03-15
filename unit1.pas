@@ -385,15 +385,25 @@ begin
     else if FileExists('/root/pisilik/control.tar.xz') then
     fpSystem('tar -xf /root/pisilik/control.tar.xz -C /root/pisilik/')
     else if FileExists('/root/pisilik/control.tar.gz') then
-    fpSystem('tar -xf /root/pisilik/control.tar.gz -C /root/pisilik/');
+    fpSystem('tar -xf /root/pisilik/control.tar.gz -C /root/pisilik/')
+    else if FileExists('/root/pisilik/control.tar.bz2') then
+    fpSystem('tar -xjf /root/pisilik/control.tar.bz2 -C /root/pisilik/')
+    else if FileExists('/root/pisilik/control.tar.lzma') then
+    fpSystem('tar --lzma -xf /root/pisilik/control.tar.lzma -C /root/pisilik/');
 
     if FileExists('/root/pisilik/data.tar.zst') then
     fpSystem('tar --zstd -xf /root/pisilik/data.tar.zst -C /root/pisilik/')
     else if FileExists('/root/pisilik/data.tar.xz') then
     fpSystem('tar -xf /root/pisilik/data.tar.xz -C /root/pisilik/')
     else if FileExists('/root/pisilik/data.tar.gz') then
-    fpSystem('tar -xf /root/pisilik/data.tar.gz -C /root/pisilik/');
+    fpSystem('tar -xf /root/pisilik/data.tar.gz -C /root/pisilik/')
+    else if FileExists('/root/pisilik/data.tar.bz2') then
+    fpSystem('tar -xjf /root/pisilik/data.tar.bz2 -C /root/pisilik/')
+    else if FileExists('/root/pisilik/data.tar.lzma') then
+    fpSystem('tar --lzma -xf /root/pisilik/data.tar.lzma -C /root/pisilik/');
+
     //------------------------------------------------------------------------------
+
 
 
     //---ÇALIŞTIRMA KOMUTU AYARLA---
